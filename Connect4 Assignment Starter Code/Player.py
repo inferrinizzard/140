@@ -1,6 +1,11 @@
 import numpy as np
 from math import inf
 
+kernels = [np.diag(np.ones(3)),
+           np.flip(np.diag(np.ones(3)), 1),
+           np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]),
+           np.rot90(np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]))]
+
 
 class AIPlayer:
 
@@ -135,7 +140,21 @@ class AIPlayer:
         RETURNS:
         The utility value for the current board
         """
-
+        score = 0
+        for i in range(1, board.shape[0] - 1):
+            for j in range(1, board.shape[1] - 1):
+                submat = board[i-1:i+2, j-1:j+2]
+                # if submat[1][1] == 1:
+                #     score += .1
+                # elif submat[1][1] == 2:
+                #     score -= .1
+                cur_zeroes = np.count_nonzero(submat == 0)
+                for kernel in kernels:
+                    if np.count_nonzero((submat - kernel) == 0) - cur_zeroes == 3:
+                        score += 1
+                    if np.count_nonzero((submat - 2 * kernel) == 0) - cur_zeroes == 3:
+                        score -= 1
+                # check kernel here
         return 0
 
     def possible_moves(self, board):

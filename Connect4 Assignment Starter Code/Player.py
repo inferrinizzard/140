@@ -26,26 +26,7 @@ class AIPlayer:
         self.player_string = 'Player {}:ai'.format(player_number)
 
     def get_alpha_beta_move(self, board):
-        """
-        Given the current state of the board, return the next move based on
-        the alpha-beta pruning algorithm
-
-        This will play against either itself or a human player
-
-        INPUTS:
-        board - a numpy array containing the state of the board using the
-                following encoding:
-                - the board maintains its same two dimensions
-                    - row 0 is the top of the board and so is
-                      the last row filled
-                - spaces that are unoccupied are marked as 0
-                - spaces that are occupied by player 1 have a 1 in them
-                - spaces that are occupied by player 2 have a 2 in them
-
-        RETURNS:
-        The 0 based index of the column that represents the next move
-        """
-        limit = 20
+        limit = 100
         bestMove = (-MAX_VAL, None)
         pool = []
         start = time()
@@ -64,7 +45,6 @@ class AIPlayer:
                 else:
                     pool = [(val, move), bestMove]
 
-            # raise NotImplementedError('Whoops I don\'t know what to do')
         print(time() - start)
         return np.random.choice([p[1] for p in pool]) if pool and pool[0][0] == bestMove[0] else bestMove[1]
         # return bestMove[1]
@@ -96,28 +76,7 @@ class AIPlayer:
         return maxVal if maxMove else minVal
 
     def get_expectimax_move(self, board):
-        """
-        Given the current state of the board, return the next move based on
-        the expectimax algorithm.
-
-        This will play against the random player, who chooses any valid move
-        with equal probability
-
-        INPUTS:
-        board - a numpy array containing the state of the board using the
-                following encoding:
-                - the board maintains its same two dimensions
-                    - row 0 is the top of the board and so is
-                      the last row filled
-                - spaces that are unoccupied are marked as 0
-                - spaces that are occupied by player 1 have a 1 in them
-                - spaces that are occupied by player 2 have a 2 in them
-
-        RETURNS:
-        The 0 based index of the column that represents the next move
-        """
-
-        limit = 3
+        limit = 100
         bestMove = (-MAX_VAL, None)
         start = time()
 
@@ -126,8 +85,14 @@ class AIPlayer:
             val = self.expectimax(next_board, move, limit, True)
             if val > bestMove[0]:
                 bestMove = (val, move)
+                pool = []
+            elif val == bestMove[0]:
+                if pool:
+                    pool.append((val, move))
+                else:
+                    pool = [(val, move), bestMove]
 
-        return bestMove[1]
+        return np.random.choice([p[1] for p in pool]) if pool and pool[0][0] == bestMove[0] else bestMove[1]
 
     def expectimax(self, board, move, layer, maxMove):
         children = self.possible_moves(board)

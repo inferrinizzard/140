@@ -1,10 +1,21 @@
 import numpy as np
-from math import inf
+from time import time
 
-kernels = [np.diag(np.ones(3)),
-           np.flip(np.diag(np.ones(3)), 1),
-           np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]),
-           np.rot90(np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]))]
+
+kernels_3 = [np.diag(np.ones(3)),
+             np.flip(np.diag(np.ones(3)), 1),
+             np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]),
+             np.rot90(np.array([[0, 0, 0], [1, 1, 1], [0, 0, 0]]))]
+
+kernel_adj = np.array([[0, 1, 0], [0, 1, 0], [0, 0, 0]])
+kernel_diag = np.array([[0, 0, 1], [0, 1, 0], [0, 0, 0]])
+kernel_edges = np.array([[0, 0, 1], [0, 0, 0], [1, 0, 0]])
+kernel_corners = np.array([[0, 1, 0], [0, 0, 0], [0, 1, 0]])
+kernels_2a = [np.rot90(k, i)
+              for k in [kernel_adj, kernel_diag] for i in range(4)]
+kernels_2b = [np.rot90(k, i)
+              for k in [kernel_edges, kernel_corners] for i in range(2)]
+MAX_VAL = len(kernels_3) * 3 + len(kernels_2a) * 2 + len(kernels_2b) * 2
 
 
 class AIPlayer:
@@ -34,33 +45,46 @@ class AIPlayer:
         RETURNS:
         The 0 based index of the column that represents the next move
         """
-        limit = 3
-        bestMove = (-inf, None)
+        limit = 20
+        bestMove = (-MAX_VAL, None)
+        pool = []
+        start = time()
+        print("minimax")
 
         for move in self.possible_moves(board):
             next_board = self.apply_move(board, move)
-            val = self.minimax(next_board, move, limit, -inf, inf, True)
+            val = self.minimax(next_board, move, limit, -
+                               MAX_VAL, MAX_VAL, True)
             if val > bestMove[0]:
                 bestMove = (val, move)
+                pool = []
+            elif val == bestMove[0]:
+                if pool:
+                    pool.append((val, move))
+                else:
+                    pool = [(val, move), bestMove]
 
-        # raise NotImplementedError('Whoops I don\'t know what to do')
-        return bestMove[1]
+            # raise NotImplementedError('Whoops I don\'t know what to do')
+        print(time() - start)
+        return np.random.choice([p[1] for p in pool]) if pool and pool[0][0] == bestMove[0] else bestMove[1]
+        # return bestMove[1]
 
     def minimax(self, board, move, layer, alpha, beta, maxMove):
         children = self.possible_moves(board)
 
         if layer == 0 or not children:
-            return (move, self.evaluating_function(board))
+            return self.evaluation_function(board)
 
-        maxVal = (-inf, None)
-        minVal = (inf, None)
+        maxVal = -MAX_VAL
+        minVal = MAX_VAL
         for child in children:
             val = self.minimax(self.apply_move(board, child),
                                child, layer - 1, alpha, beta, not maxMove)
-            if val > maxVal[0]:
-                maxVal = (val, child)
-            elif val < minVal[0]:
-                minVal = (val, child)
+
+            if maxMove and val > maxVal:
+                maxVal = val
+            elif not maxMove and val < minVal:
+                minVal = val
 
             if val > alpha:
                 alpha = val
@@ -94,7 +118,8 @@ class AIPlayer:
         """
 
         limit = 3
-        bestMove = (-inf, None)
+        bestMove = (-MAX_VAL, None)
+        start = time()
 
         for move in self.possible_moves(board):
             next_board = self.apply_move(board, move)
@@ -108,15 +133,15 @@ class AIPlayer:
         children = self.possible_moves(board)
 
         if layer == 0 or not children:
-            return (move, self.evaluating_function(board))
+            return self.evaluation_function(board)
 
-        maxVal = (-inf, None)
+        maxVal = -MAX_VAL
         expVal = 0
         for child in children:
-            val = self.minimax(self.apply_move(board, child),
-                               child, layer - 1, not maxMove)
-            if maxMove and val > maxVal[0]:
-                maxVal = (val, child)
+            val = self.expectimax(self.apply_move(board, child),
+                                  child, layer - 1, not maxMove)
+            if maxMove and val > maxVal:
+                maxVal = val
             else:
                 expVal += val / len(children)
 
@@ -144,31 +169,37 @@ class AIPlayer:
         for i in range(1, board.shape[0] - 1):
             for j in range(1, board.shape[1] - 1):
                 submat = board[i-1:i+2, j-1:j+2]
-                # if submat[1][1] == 1:
+                val = submat[1][1]
+                # if val == 1:
                 #     score += .1
-                # elif submat[1][1] == 2:
+                # elif val == 2:
                 #     score -= .1
                 cur_zeroes = np.count_nonzero(submat == 0)
-                for kernel in kernels:
-                    if np.count_nonzero((submat - kernel) == 0) - cur_zeroes == 3:
-                        score += 1
-                    if np.count_nonzero((submat - 2 * kernel) == 0) - cur_zeroes == 3:
-                        score -= 1
-                # check kernel here
-        return 0
+                ones = np.count_nonzero(submat == 1)
+                twos = 9 - cur_zeroes - ones
+                score += (ones - twos)
+                if val:
+                    for kernel, size in [(kernels_3, 3), (kernels_2a, 2)]:
+                        if self.check_kernel(submat, val * kernel, cur_zeroes, size):
+                            score += size if val == 1 else -size
+                else:
+                    for kernel in kernels_2b:
+                        if (self.check_kernel(submat, kernel, cur_zeroes, 2) or
+                                self.check_kernel(submat, 2 * kernel, cur_zeroes, 2)):
+                            score += 3
+
+        return score
+
+    def check_kernel(self, submat, kernel, zeroes, target):
+        return np.count_nonzero((submat - kernel) == 0) - zeroes == target
 
     def possible_moves(self, board):
-        return [i for row, i in enumerate(board[0]) if 0 in board[:, col] for col in row]
-        # valid_cols = []
-        # for col in range(board.shape[1]):
-        #     if 0 in board[:, col]:
-        #         valid_cols.append((col, layer + 1))
-        # return valid_cols
+        return [i for i in range(board.shape[1]) if 0 in board[:, i:i+1]]
 
     def apply_move(self, board, col):
         temp = board
         column = board[:, col]
-        row = next((r for r in column if r > 0), default=len(column)) - 1
+        row = next((r for r in column if r > 0), len(column)) - 1
         temp[row][col] = self.player_number
         return temp
 

@@ -1,5 +1,4 @@
 import numpy as np
-from time import time
 
 
 kernels_3 = [np.diag(np.ones(3)),
@@ -29,8 +28,6 @@ class AIPlayer:
         limit = 100
         bestMove = (-MAX_VAL, None)
         pool = []
-        start = time()
-        print("minimax")
 
         for move in self.possible_moves(board):
             next_board = self.apply_move(board, move)
@@ -45,9 +42,7 @@ class AIPlayer:
                 else:
                     pool = [(val, move), bestMove]
 
-        print(time() - start)
         return np.random.choice([p[1] for p in pool]) if pool and pool[0][0] == bestMove[0] else bestMove[1]
-        # return bestMove[1]
 
     def minimax(self, board, move, layer, alpha, beta, maxMove):
         children = self.possible_moves(board)
@@ -135,10 +130,6 @@ class AIPlayer:
             for j in range(1, board.shape[1] - 1):
                 submat = board[i-1:i+2, j-1:j+2]
                 val = submat[1][1]
-                # if val == 1:
-                #     score += .1
-                # elif val == 2:
-                #     score -= .1
                 cur_zeroes = np.count_nonzero(submat == 0)
                 ones = np.count_nonzero(submat == 1)
                 twos = 9 - cur_zeroes - ones

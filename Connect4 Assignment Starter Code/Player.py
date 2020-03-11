@@ -32,7 +32,7 @@ class AIPlayer:
         for move in self.possible_moves(board):
             next_board = self.apply_move(board, move)
             val = self.minimax(next_board, move, limit, -
-                               MAX_VAL, MAX_VAL, True)
+                               MAX_VAL, MAX_VAL, False)
             if val > bestMove[0]:
                 bestMove = (val, move)
                 pool = []
@@ -47,7 +47,7 @@ class AIPlayer:
     def minimax(self, board, move, layer, alpha, beta, maxMove):
         children = self.possible_moves(board)
 
-        if layer == 0 or not children:
+        if not layer or not children:
             return self.evaluation_function(board)
 
         maxVal = -MAX_VAL
@@ -71,13 +71,13 @@ class AIPlayer:
         return maxVal if maxMove else minVal
 
     def get_expectimax_move(self, board):
-        limit = 100
+        limit = 5
         bestMove = (-MAX_VAL, None)
-        start = time()
+        pool = []
 
         for move in self.possible_moves(board):
             next_board = self.apply_move(board, move)
-            val = self.expectimax(next_board, move, limit, True)
+            val = self.expectimax(next_board, move, limit, False)
             if val > bestMove[0]:
                 bestMove = (val, move)
                 pool = []
@@ -92,7 +92,7 @@ class AIPlayer:
     def expectimax(self, board, move, layer, maxMove):
         children = self.possible_moves(board)
 
-        if layer == 0 or not children:
+        if not layer or not children:
             return self.evaluation_function(board)
 
         maxVal = -MAX_VAL
@@ -108,23 +108,6 @@ class AIPlayer:
         return maxVal if maxMove else expVal
 
     def evaluation_function(self, board):
-        """
-        Given the current stat of the board, return the scalar value that
-        represents the evaluation function for the current player
-
-        INPUTS:
-        board - a numpy array containing the state of the board using the
-                following encoding:
-                - the board maintains its same two dimensions
-                    - row 0 is the top of the board and so is
-                      the last row filled
-                - spaces that are unoccupied are marked as 0
-                - spaces that are occupied by player 1 have a 1 in them
-                - spaces that are occupied by player 2 have a 2 in them
-
-        RETURNS:
-        The utility value for the current board
-        """
         score = 0
         for i in range(1, board.shape[0] - 1):
             for j in range(1, board.shape[1] - 1):
